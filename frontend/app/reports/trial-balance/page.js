@@ -35,7 +35,7 @@ export default function TrialBalancePage() {
   (data?.ledgers || []).forEach(l => { if (byNature[l.nature]) byNature[l.nature].push(l); });
 
   return (
-    <div className="flex min-h-screen bg-zinc-950 text-zinc-100 font-sans">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-zinc-950 text-zinc-100 font-sans">
       <ReportsSidebar companyName={selectedCompany?.name} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-900/30">
@@ -60,7 +60,7 @@ export default function TrialBalancePage() {
           ) : !data ? (
             <p className="text-zinc-600 text-center py-20">No data available</p>
           ) : (
-            <div className="rounded-xl border border-zinc-800 overflow-hidden">
+            <div className="rounded-xl border border-zinc-800 overflow-x-auto">
               {/* Report Title Header */}
               <div className="bg-zinc-900 px-6 py-4 border-b border-zinc-800 text-center">
                 <h2 className="text-base font-bold text-zinc-200">TRIAL BALANCE</h2>

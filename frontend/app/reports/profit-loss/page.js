@@ -41,7 +41,7 @@ export default function ProfitLossPage() {
   const cur = selectedCompany?.currency_symbol || '₹';
 
   return (
-    <div className="flex min-h-screen bg-zinc-950 text-zinc-100 font-sans">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-zinc-950 text-zinc-100 font-sans">
       <ReportsSidebar companyName={selectedCompany?.name} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-900/30">
@@ -73,7 +73,7 @@ export default function ProfitLossPage() {
                 <p className="text-xs text-zinc-600 mt-0.5">For the period ending {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Expenditure / Losses (Left Side) */}
                 <div className="rounded-xl border border-red-800/40 overflow-hidden">
                   <div className="bg-red-500/10 px-4 py-3 border-b border-red-800/40 flex justify-between">

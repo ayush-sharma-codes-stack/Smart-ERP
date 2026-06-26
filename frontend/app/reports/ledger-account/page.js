@@ -55,7 +55,7 @@ export default function LedgerAccountPage() {
   const cur = selectedCompany?.currency_symbol || '₹';
 
   return (
-    <div className="flex min-h-screen bg-zinc-950 text-zinc-100 font-sans">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-zinc-950 text-zinc-100 font-sans">
       <ReportsSidebar companyName={selectedCompany?.name} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-900/30">
@@ -75,7 +75,7 @@ export default function LedgerAccountPage() {
         </header>
 
         {/* Filters Panel */}
-        <div className="flex items-center gap-4 px-6 py-3 border-b border-zinc-800 bg-zinc-900/10 flex-wrap">
+        <div className="flex items-center gap-3 px-4 sm:px-6 py-3 border-b border-zinc-800 bg-zinc-900/10 flex-wrap gap-y-3">
           <div className="flex items-center gap-2 flex-1 max-w-sm">
             <label className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Account:</label>
             <select
@@ -112,7 +112,7 @@ export default function LedgerAccountPage() {
           ) : !data ? (
             <p className="text-zinc-600 text-center py-20">No data available.</p>
           ) : (
-            <div className="rounded-xl border border-zinc-800 overflow-hidden bg-zinc-950">
+            <div className="rounded-xl border border-zinc-800 overflow-x-auto bg-zinc-950">
               {/* Statement Header */}
               <div className="px-6 py-5 border-b border-zinc-800 text-center bg-zinc-900/50">
                 <h2 className="text-xl font-bold text-zinc-100 uppercase tracking-widest">{data.ledger.name}</h2>

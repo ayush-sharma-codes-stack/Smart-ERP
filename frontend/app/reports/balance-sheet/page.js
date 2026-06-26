@@ -41,7 +41,7 @@ export default function BalanceSheetPage() {
   const cur = selectedCompany?.currency_symbol || '₹';
 
   return (
-    <div className="flex min-h-screen bg-zinc-950 text-zinc-100 font-sans">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-zinc-950 text-zinc-100 font-sans">
       <ReportsSidebar companyName={selectedCompany?.name} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-900/30">
@@ -75,7 +75,7 @@ export default function BalanceSheetPage() {
               </div>
 
               {/* Two-column Tally-style layout */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Liabilities Side (Cr) */}
                 <div className="rounded-xl border border-purple-800/40 overflow-hidden">
                   <div className="bg-purple-500/10 px-4 py-3 border-b border-purple-800/40 flex justify-between items-center">

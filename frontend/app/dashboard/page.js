@@ -209,9 +209,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Main Screen Panel */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 overflow-y-auto md:overflow-hidden">
         {/* Left Half: Active Company Details (Tally Classic Style) */}
-        <div className="w-1/2 p-6 border-r border-zinc-850 flex flex-col justify-between bg-zinc-900/10">
+        <div className="w-full md:w-1/2 p-4 sm:p-6 border-b md:border-b-0 md:border-r border-zinc-850 flex flex-col justify-between bg-zinc-900/10 shrink-0 gap-6">
           <div className="space-y-6">
             <div className="border border-zinc-800 rounded-lg p-5 bg-zinc-900/30">
               <h2 className="text-xs uppercase tracking-wider text-zinc-500 font-bold mb-3">Active Company Details</h2>
@@ -248,8 +248,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Right Half: Gateway of SmartERP Menu list (Tally classic keyboard-focus selector) */}
-        <div className="w-1/2 p-8 flex flex-col justify-center items-center bg-zinc-950 relative">
+        {/* Right Half: Gateway of SmartERP Menu list (Tally classic gateway) */}
+        <div className="w-full md:w-1/2 p-4 sm:p-8 flex flex-col justify-center items-center bg-zinc-950 relative shrink-0">
           {/* Outer retro Tally double border */}
           <div className="w-full max-w-md border-4 border-double border-zinc-800 rounded-lg p-6 bg-zinc-900/20 shadow-2xl">
             <div className="text-center font-bold text-lg text-emerald-400 mb-6 uppercase tracking-widest border-b border-zinc-850 pb-2">

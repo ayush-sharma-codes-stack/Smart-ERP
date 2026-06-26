@@ -12,6 +12,8 @@ const ledgerRoutes = require('./routes/ledger');
 const stockRoutes = require('./routes/stock');
 const voucherRoutes = require('./routes/voucher');
 const reportsRoutes = require('./routes/reports');
+const customerRoutes = require('./routes/customer');
+const invoiceRoutes = require('./routes/invoice');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -44,6 +46,8 @@ app.use('/api/ledgers', ledgerRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/vouchers', voucherRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 
 // Error Handling Middleware
