@@ -61,6 +61,7 @@ exports.login = async (req, res) => {
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -75,8 +76,12 @@ exports.login = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Login Auth Error:', err);
+    res.status(500).json({
+      message: process.env.NODE_ENV === 'development'
+        ? `Database/Server error: ${err.message}`
+        : 'Server error: unable to process login. Please check database connection.',
+    });
   }
 };
 

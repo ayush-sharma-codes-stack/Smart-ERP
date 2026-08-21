@@ -81,7 +81,7 @@ function CustomerSelect({ value, name, customers, onChange, onAddNew }) {
 }
 
 // ── Searchable Autocomplete Select for Stock Items ───────────────────────────
-function ItemSelect({ value, name, items, onChange, placeholder, className }) {
+function ItemSelect({ value, name, items, onChange, onAddNew, placeholder, className }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState(name || '');
   const ref = useRef(null);
@@ -94,7 +94,7 @@ function ItemSelect({ value, name, items, onChange, placeholder, className }) {
 
   useEffect(() => { setQ(name || ''); }, [name]);
 
-  const filtered = items.filter(i => i.name.toLowerCase().includes(q.toLowerCase())).slice(0, 10);
+  const filtered = items.filter(i => i.name && i.name.toLowerCase().includes(q.toLowerCase())).slice(0, 10);
 
   return (
     <div ref={ref} className="relative">
@@ -107,24 +107,41 @@ function ItemSelect({ value, name, items, onChange, placeholder, className }) {
         onFocus={() => setOpen(true)}
         autoComplete="off"
       />
-      {open && filtered.length > 0 && (
+      {open && (
         <div className="absolute left-0 top-full mt-1 z-50 w-64 rounded-lg border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden">
-          {filtered.map(i => (
-            <div
-              key={i.id}
-              onMouseDown={() => { onChange(i); setQ(i.name); setOpen(false); }}
-              className="px-3 py-2 text-xs hover:bg-emerald-500/10 hover:text-emerald-300 cursor-pointer flex flex-col gap-0.5"
-            >
-              <div className="font-semibold text-zinc-200 flex justify-between">
-                <span>{i.name}</span>
-                <span className="text-emerald-400 font-mono">₹{parseFloat(i.selling_price).toFixed(2)}</span>
-              </div>
-              <div className="text-[10px] text-zinc-550 flex justify-between">
-                <span>GST: {i.gst_percent}%</span>
-                <span>Stock: {parseFloat(i.quantity_on_hand).toFixed(0)} {i.unit_symbol}</span>
-              </div>
+          {filtered.length === 0 ? (
+            <div className="p-3 text-xs text-zinc-500 text-center flex flex-col gap-2">
+              <span>No items found</span>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onAddNew(q);
+                  setOpen(false);
+                }}
+                className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-450 font-bold rounded transition cursor-pointer text-[10px]"
+              >
+                + Register "{q || 'New Item'}"
+              </button>
             </div>
-          ))}
+          ) : (
+            filtered.map(i => (
+              <div
+                key={i.id}
+                onMouseDown={() => { onChange(i); setQ(i.name); setOpen(false); }}
+                className="px-3 py-2 text-xs hover:bg-emerald-500/10 hover:text-emerald-300 cursor-pointer flex flex-col gap-0.5"
+              >
+                <div className="font-semibold text-zinc-200 flex justify-between">
+                  <span>{i.name}</span>
+                  <span className="text-emerald-400 font-mono">₹{parseFloat(i.selling_price).toFixed(2)}</span>
+                </div>
+                <div className="text-[10px] text-zinc-550 flex justify-between">
+                  <span>GST: {i.gst_percent}%</span>
+                  <span>Stock: {parseFloat(i.quantity_on_hand).toFixed(0)} {i.unit_symbol}</span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>
@@ -138,6 +155,7 @@ export default function NewInvoicePage() {
   // Master Data
   const [customers, setCustomers] = useState([]);
   const [stockItems, setStockItems] = useState([]);
+  const [units, setUnits] = useState([]);
 
   // Form State
   const today = new Date().toISOString().split('T')[0];
@@ -156,6 +174,13 @@ export default function NewInvoicePage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [newItemRowIndex, setNewItemRowIndex] = useState(null);
+
+  // New Stock Item Form State
+  const [newItem, setNewItem] = useState({
+    name: '', unitId: '', sellingPrice: '0', gstPercent: '0'
+  });
 
   // New Customer Form State
   const [newCust, setNewCust] = useState({
@@ -166,13 +191,20 @@ export default function NewInvoicePage() {
 
   const fetchData = useCallback(async () => {
     if (!selectedCompany) return;
-    const [custRes, itemsRes] = await Promise.all([
+    const [custRes, itemsRes, unitsRes] = await Promise.all([
       apiCall(`/customers?companyId=${selectedCompany.id}`),
-      apiCall(`/stock/items?companyId=${selectedCompany.id}`)
+      apiCall(`/stock/items?companyId=${selectedCompany.id}`),
+      apiCall(`/stock/units?companyId=${selectedCompany.id}`)
     ]);
 
     if (!custRes.error) setCustomers(custRes.data);
     if (!itemsRes.error) setStockItems(itemsRes.data);
+    if (!unitsRes.error) {
+      setUnits(unitsRes.data);
+      if (unitsRes.data.length > 0) {
+        setNewItem(prev => ({ ...prev, unitId: unitsRes.data[0].id }));
+      }
+    }
 
     // Default place of supply to company state
     if (selectedCompany.state) {
@@ -198,8 +230,15 @@ export default function NewInvoicePage() {
     if (rows.length <= 1) return;
     setRows(prev => prev.filter((_, i) => i !== idx));
   };
-  const updateRow = (idx, field, val) => {
-    setRows(prev => prev.map((row, i) => i === idx ? { ...row, [field]: val } : row));
+  const updateRow = (idx, fieldOrFields, val) => {
+    setRows(prev => prev.map((row, i) => {
+      if (i !== idx) return row;
+      if (typeof fieldOrFields === 'object') {
+        // Batch update: fieldOrFields is a plain object of { field: value }
+        return { ...row, ...fieldOrFields };
+      }
+      return { ...row, [fieldOrFields]: val };
+    }));
   };
 
   // Dynamically calculate calculations
@@ -279,14 +318,89 @@ export default function NewInvoicePage() {
     }
   };
 
+  const handleCreateStockItem = async (e) => {
+    e.preventDefault();
+    if (!newItem.name.trim()) { alert('Item name is required'); return; }
+    if (!newItem.unitId) { alert('Please select a unit of measure'); return; }
+
+    try {
+      const res = await apiCall('/stock/items', {
+        method: 'POST',
+        body: JSON.stringify({
+          companyId: selectedCompany.id,
+          name: newItem.name.trim(),
+          unitId: newItem.unitId,
+          sellingPrice: newItem.sellingPrice,
+          gstPercent: newItem.gstPercent
+        })
+      });
+
+      if (res.error) {
+        alert(res.error);
+      } else {
+        // Refresh items list
+        const updatedItemsRes = await apiCall(`/stock/items?companyId=${selectedCompany.id}`);
+        if (!updatedItemsRes.error) {
+          setStockItems(updatedItemsRes.data);
+        }
+
+        // Auto select newly created item for the row
+        const createdItem = res.data.item;
+        if (newItemRowIndex !== null) {
+          updateRow(newItemRowIndex, {
+            stockItemId: createdItem.id,
+            itemName: createdItem.name,
+            rate: String(createdItem.selling_price || 0),
+            gstPercent: String(createdItem.gst_percent || 0)
+          });
+        }
+
+        setIsItemModalOpen(false);
+        setNewItem({ name: '', unitId: units[0]?.id || '', sellingPrice: '0', gstPercent: '0' });
+      }
+    } catch (err) {
+      alert('Failed to save stock item.');
+    }
+  };
+
   const handlePostInvoice = async () => {
     setErrorMsg('');
     setSuccessMsg('');
 
-    if (!customer) { setErrorMsg('Customer selection is required'); return; }
-    if (!invoiceDate) { setErrorMsg('Invoice date is required'); return; }
-    const validRows = rows.filter(r => r.stockItemId && parseFloat(r.quantity) > 0 && parseFloat(r.rate) >= 0);
-    if (!validRows.length) { setErrorMsg('At least one item line with valid quantity and rate is required'); return; }
+    if (!customer) {
+      setErrorMsg('Please select a customer from the dropdown. If the customer does not exist, click the "+" button next to the customer field to create them.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    if (!invoiceDate) {
+      setErrorMsg('Invoice date is required.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // Try to resolve stockItemId by itemName if user typed but didn't click dropdown
+    const resolvedRows = rows.map(row => {
+      if (!row.stockItemId && row.itemName) {
+        const match = stockItems.find(s => s.name && s.name.toLowerCase() === row.itemName.toLowerCase());
+        if (match) return { ...row, stockItemId: match.id };
+      }
+      return row;
+    });
+
+    const hasIncompleteRow = rows.some(r => r.itemName && !r.stockItemId);
+    const validRows = resolvedRows.filter(r => r.stockItemId && parseFloat(r.quantity) > 0 && parseFloat(r.rate) > 0);
+
+    if (hasIncompleteRow && !validRows.length) {
+      setErrorMsg('The entered stock item was not found. Please click and select it from the search dropdown.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!validRows.length) {
+      setErrorMsg('Please select at least one valid stock item from the dropdown, and enter a quantity and rate.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
     setSubmitting(true);
     const payload = {
@@ -316,6 +430,8 @@ export default function NewInvoicePage() {
       }))
     };
 
+    console.log('[Invoice] payload being sent:', JSON.stringify(payload));
+
     const res = await apiCall('/invoices', {
       method: 'POST',
       body: JSON.stringify(payload)
@@ -323,6 +439,7 @@ export default function NewInvoicePage() {
 
     if (res.error) {
       setErrorMsg(res.error);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       setSuccessMsg(`✓ Invoice ${res.data.invoice.invoice_number} generated successfully!`);
       // Reset form
@@ -501,10 +618,17 @@ export default function NewInvoicePage() {
                             name={row.itemName}
                             items={stockItems}
                             onChange={item => {
-                              updateRow(idx, 'stockItemId', item.id);
-                              updateRow(idx, 'itemName', item.name);
-                              updateRow(idx, 'rate', String(item.selling_price || 0));
-                              updateRow(idx, 'gstPercent', String(item.gst_percent || 0));
+                              updateRow(idx, {
+                                stockItemId: item.id,
+                                itemName: item.name,
+                                rate: String(item.selling_price || 0),
+                                gstPercent: String(item.gst_percent || 0),
+                              });
+                            }}
+                            onAddNew={(searchVal) => {
+                              setNewItemRowIndex(idx);
+                              setNewItem(prev => ({ ...prev, name: searchVal, unitId: units[0]?.id || '' }));
+                              setIsItemModalOpen(true);
                             }}
                             className="border-b border-zinc-800 pb-0.5"
                           />
@@ -674,23 +798,36 @@ export default function NewInvoicePage() {
             </div>
 
             {/* Bottom Actions */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-zinc-800 text-xs">
-              <button
-                type="button"
-                onClick={() => router.push('/dashboard')}
-                className="text-zinc-500 hover:text-zinc-300 transition"
-              >
-                Cancel and exit [Esc]
-              </button>
-              <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex flex-col gap-3 pt-4 border-t border-zinc-800 text-xs">
+              {/* Error message near button so user sees it without scrolling */}
+              {errorMsg && (
+                <div className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-400">
+                  <AlertCircle size={16} /> {errorMsg}
+                </div>
+              )}
+              {successMsg && (
+                <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-4 py-3 text-sm text-emerald-400">
+                  <CheckCircle size={16} /> {successMsg}
+                </div>
+              )}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <button
-                  onClick={handlePostInvoice}
-                  disabled={submitting || !customer}
-                  className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-450 hover:to-teal-550 text-black font-bold text-sm transition disabled:opacity-40 cursor-pointer shadow-lg shadow-emerald-500/10"
+                  type="button"
+                  onClick={() => router.push('/dashboard')}
+                  className="text-zinc-500 hover:text-zinc-300 transition"
                 >
-                  {submitting ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-                  Save and Post Invoice
+                  Cancel and exit [Esc]
                 </button>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <button
+                    onClick={handlePostInvoice}
+                    disabled={submitting}
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-450 hover:to-teal-550 text-black font-bold text-sm transition disabled:opacity-40 cursor-pointer shadow-lg shadow-emerald-500/10"
+                  >
+                    {submitting ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                    Save and Post Invoice
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -843,6 +980,92 @@ export default function NewInvoicePage() {
                 <button
                   type="button"
                   onClick={() => setIsCustomerModalOpen(false)}
+                  className="flex-1 py-2.5 rounded bg-zinc-800 hover:bg-zinc-750 text-zinc-300 font-semibold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE STOCK ITEM INLINE MODAL */}
+      {isItemModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-mono">
+          <div className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <h3 className="text-base font-bold text-zinc-100 uppercase tracking-wide">Register New Stock Item</h3>
+              <button onClick={() => setIsItemModalOpen(false)} className="text-zinc-500 hover:text-zinc-300 text-sm">✕</button>
+            </div>
+            
+            <form onSubmit={handleCreateStockItem} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Item Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newItem.name}
+                  onChange={e => setNewItem(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-2.5 py-1.5 text-zinc-200 focus:outline-none"
+                  placeholder="e.g. Acer Laptop, Pen"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Unit of Measure *</label>
+                  {units.length === 0 ? (
+                    <div className="text-[10px] text-red-400 py-2">
+                      No units available. Please create a unit in Masters first.
+                    </div>
+                  ) : (
+                    <select
+                      required
+                      value={newItem.unitId}
+                      onChange={e => setNewItem(prev => ({ ...prev, unitId: e.target.value }))}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded px-2.5 py-1.5 text-zinc-200 focus:outline-none"
+                    >
+                      {units.map(u => (
+                        <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">GST Rate %</label>
+                  <input
+                    type="number"
+                    value={newItem.gstPercent}
+                    onChange={e => setNewItem(prev => ({ ...prev, gstPercent: e.target.value }))}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded px-2.5 py-1.5 text-zinc-200 focus:outline-none"
+                    min="0" max="100"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Selling Price (₹)</label>
+                <input
+                  type="number"
+                  value={newItem.sellingPrice}
+                  onChange={e => setNewItem(prev => ({ ...prev, sellingPrice: e.target.value }))}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded px-2.5 py-1.5 text-zinc-200 focus:outline-none"
+                  min="0" step="0.01"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-3 border-t border-zinc-800">
+                <button
+                  type="submit"
+                  disabled={units.length === 0}
+                  className="flex-1 py-2.5 rounded bg-emerald-500 hover:bg-emerald-600 text-black font-bold transition cursor-pointer disabled:opacity-40"
+                >
+                  Create & Select
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsItemModalOpen(false)}
                   className="flex-1 py-2.5 rounded bg-zinc-800 hover:bg-zinc-750 text-zinc-300 font-semibold transition cursor-pointer"
                 >
                   Cancel

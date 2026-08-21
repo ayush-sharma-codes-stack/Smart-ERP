@@ -13,33 +13,51 @@ export function AppProvider({ children }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  const API_URL = rawApiUrl.endsWith('/api') ? rawApiUrl.replace(/\/$/, '') : `${rawApiUrl.replace(/\/$/, '')}/api`;
 
   // Helper to call backend API
   const apiCall = async (endpoint, options = {}) => {
-    const token = localStorage.getItem('token');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const headers = {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers,
     };
 
-    const res = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    try {
+      const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+      const res = await fetch(`${API_URL}${cleanEndpoint}`, {
+        ...options,
+        headers,
+      });
 
-    if (res.status === 401 && pathname !== '/login') {
-      // Token expired or invalid
-      logout();
-      return { error: 'Unauthorized', status: 401 };
-    }
+      if (res.status === 401 && pathname !== '/login') {
+        // Token expired or invalid
+        logout();
+        return { error: 'Unauthorized', status: 401 };
+      }
 
-    const data = await res.json();
-    if (!res.ok) {
-      return { error: data.message || 'Something went wrong', status: res.status };
+      let data = {};
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        data = { message: text || res.statusText };
+      }
+
+      if (!res.ok) {
+        return { error: data.message || 'Something went wrong on the server', status: res.status };
+      }
+      return { data, status: res.status };
+    } catch (err) {
+      console.error('API Call Error:', err);
+      return {
+        error: 'Unable to connect to backend server. Please verify backend deployment and network settings.',
+        status: 0,
+      };
     }
-    return { data, status: res.status };
   };
 
   // Fetch current user and companies

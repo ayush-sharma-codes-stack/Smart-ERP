@@ -26,9 +26,10 @@ async function getAppliedMigrations(client) {
   return new Set(rows.map((r) => r.filename));
 }
 
-async function runMigrations() {
-  const client = await pool.connect();
+async function runMigrations(closePool = true) {
+  let client;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
     await ensureMigrationsTable(client);
 
@@ -54,13 +55,18 @@ async function runMigrations() {
     await client.query('COMMIT');
     console.log(`\nMigrations complete. ${count} new migration(s) applied.\n`);
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (client) await client.query('ROLLBACK');
     console.error('\nMigration failed — rolled back.\n', err.message);
-    process.exit(1);
+    if (closePool) process.exit(1);
+    throw err;
   } finally {
-    client.release();
-    await pool.end();
+    if (client) client.release();
+    if (closePool) await pool.end();
   }
 }
 
-runMigrations();
+if (require.main === module) {
+  runMigrations(true);
+}
+
+module.exports = { runMigrations };
